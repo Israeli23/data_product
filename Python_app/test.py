@@ -1,5 +1,7 @@
-import pandas as pd
+import requests
 
-data = pd.read_csv('cleaned_data.csv')
 
-print(data.head())
+book = "Harry Potter and the half-Blood Prince"
+
+response = requests.get("https://aot-api.vercel.app/quote")
+print(response.text)

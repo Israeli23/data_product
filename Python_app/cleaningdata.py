@@ -1,7 +1,16 @@
 from sqlalchemy import create_engine
 import pandas as pd
 import pyodbc
+import argparse 
 
+#Create the argument parser 
+parser = argparse.ArgumentParser(description="Clean data and Optionally upload to SQL")
+
+#Create the argument 
+parser.add_argument("--write_sql", action="store_true")
+args = parser.parse_args()
+
+#This function takes in a csv file 
 def fileLoader(filepath, df_name="DataFrame"):
     try:
         df = pd.read_csv(filepath)
@@ -70,26 +79,33 @@ Customers = remove_duplicates(Customers, "Customers")
 Customers = remove_nulls(Customers, "Customers")
 Customers.to_csv("Data/Cleaned_Customers.csv")
 
+if args.write_sql == True:
+    server = 'localhost'
+    database = 'LibrarySystem'
+    driver = 'ODBC Driver 17 for SQL Server'
 
-server = 'localhost'
-database = 'LibrarySystem'
-driver = 'ODBC Driver 17 for SQL Server'
+    connection_string = f"mssql+pyodbc://@{server}/{database}?trusted_connection=yes&driver={driver}"
+    engine = create_engine(connection_string)
 
-connection_string = f"mssql+pyodbc://@{server}/{database}?trusted_connection=yes&driver={driver}"
-engine = create_engine(connection_string)
+    books = pd.read_csv('Data/Cleaned_Books.csv')
 
-books = pd.read_csv('Data/Cleaned_Books.csv')
+    customers = pd.read_csv('Data/Cleaned_Customers.csv')
 
-customers = pd.read_csv('Data/Cleaned_Customers.csv')
+    books.to_sql(
+        name='Books',
+        if_exists="replace",
+        con=engine 
+    )
 
-books.to_sql(
-    name='Books',
-    if_exists="replace",
-    con=engine 
-)
+    customers.to_sql(
+        name='Customers',
+        if_exists="replace",
+        con=engine
+    )
 
-customers.to_sql(
-    name='Customers',
-    if_exists="replace",
-    con=engine
-)
+    print("Data written to SQL")
+else:
+    print("Argument not met: Not writting to SQL")
+
+    
+
