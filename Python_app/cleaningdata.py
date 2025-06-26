@@ -10,11 +10,20 @@ parser = argparse.ArgumentParser(description="Clean data and Optionally upload t
 parser.add_argument("--write_sql", action="store_true")
 args = parser.parse_args()
 
+data_summary = []
+
+def summary(step, message, result, table_name="", ):
+    print(message)
+    data_summary.append({"step": step, "message": message, "result": result,"table_name": table_name})
+
 #This function takes in a csv file 
 def fileLoader(filepath, df_name="DataFrame"):
     try:
         df = pd.read_csv(filepath)
-        print(f"[{df_name}] Loaded successfully with {len(df)} rows")
+        output = (f"[{df_name}] Loaded successfully with {len(df)} rows")
+        result = len(df)
+        print(result)
+        summary("filesLoaded", output, result, df_name)
         return df
     except Exception as error:
         print(f"{df_name} Error loading CSV: {error}")
@@ -28,7 +37,9 @@ def remove_duplicates(df, df_name="DataFrame"):
         before = len(df)
         df= df.drop_duplicates()
         after = len(df)
-        print(f"Removed {before - after} duplicated rows from {df_name}")
+        output = (f"Removed {before - after} duplicated rows from {df_name}")
+        result = (f"{before - after}")
+        summary("Duplicates", output, result, df_name)
         return df
     except Exception as error:
         print(f"Error removing duplicates: {error} from {df_name}")
@@ -39,7 +50,9 @@ def remove_nulls(df, df_name="DataFrame"):
         before = len(df)
         df = df.dropna()
         after = len(df)
-        print(f"Removed {before - after} nulls from {df_name}")
+        output = (f"Removed {before - after} nulls from {df_name}")
+        result = (f"{before - after}")
+        summary("NullsRemoved", output, result, df_name)
         return df
     except Exception as error:
         print(f"Error removing nullls: {error} from {df_name}")
@@ -49,7 +62,8 @@ def fix_dates(df, column, df_name="DataFrame"):
     try:
         df[column] = pd.to_datetime(df[column].str.strip('"'), format='%d/%m/%Y', errors = 'coerce')
         df = df.dropna(subset=[column])
-        print(f"{df_name} fixed {column} to correct format")
+        output = (f"{df_name} fixed {column} to correct format")
+        summary("FixDates", output, df_name, df_name)
         return df 
     except Exception as error:
         print(f"{df_name} there was an erorr: {error}")
@@ -61,7 +75,8 @@ class dataEnrichment:
         try:
             df[new_col] = (df[col2] - df[col1]).dt.days
             df = df[df[new_col] >=0]
-            print(f"{df_name}: Added column {new_col}")
+            output = (f"{df_name}: Added column {new_col}")
+            summary("enrichData", output, df_name, df_name)
             return df
         except Exception as error:
             print(f"{df_name} Error calculating no.of days {error}")
@@ -107,8 +122,15 @@ if __name__ == "__main__":
             con=engine
         )
 
+        summary_df = pd.DataFrame(data_summary)
+
+        summary_df.to_sql(
+            name='datasummary',
+            if_exists="replace",
+            con=engine
+        )
+
         print("Data written to SQL")
     else:
         print("Argument not met: Not writting to SQL")
 
-        
