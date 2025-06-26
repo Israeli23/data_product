@@ -1,6 +1,6 @@
 from sqlalchemy import create_engine
 import pandas as pd
-import pyodbc
+#import pyodbc
 import argparse 
 
 #Create the argument parser 
@@ -56,56 +56,59 @@ def fix_dates(df, column, df_name="DataFrame"):
         return df
 
 
-def enrichData(df, col1, col2, new_col, df_name="DataFrame"):
-    try:
-        df[new_col] = (df[col2] - df[col1]).dt.days
-        df = df[df[new_col] >=0]
-        print(f"{df_name}: Added column {new_col}")
-        return df
-    except Exception as error:
-        print(f"{df_name} Error calculating no.of days {error}")
-        return df 
-    
+class dataEnrichment:
+    def enrichData(self, df, col1, col2, new_col, df_name="DataFrame"):
+        try:
+            df[new_col] = (df[col2] - df[col1]).dt.days
+            df = df[df[new_col] >=0]
+            print(f"{df_name}: Added column {new_col}")
+            return df
+        except Exception as error:
+            print(f"{df_name} Error calculating no.of days {error}")
+            return df 
 
 
-Books = remove_duplicates(Books, "Books")
-Books = remove_nulls(Books, "Books")
-Books = fix_dates(Books, "Book checkout", "Books")
-Books = fix_dates(Books, "Book Returned", "Books")
-Books = enrichData(Books, "Book checkout", "Book Returned", "daysTakenToReturn", "Books")
-Books.to_csv("Data/Cleaned_Books.csv")
+if __name__ == "__main__":       
+    Books = remove_duplicates(Books, "Books")
+    Books = remove_nulls(Books, "Books")
+    Books = fix_dates(Books, "Book checkout", "Books")
+    Books = fix_dates(Books, "Book Returned", "Books")
 
-Customers = remove_duplicates(Customers, "Customers")
-Customers = remove_nulls(Customers, "Customers")
-Customers.to_csv("Data/Cleaned_Customers.csv")
+    enricher = dataEnrichment()
+    Books = enricher.enrichData(Books, "Book checkout", "Book Returned", "daysTakenToReturn", "Books")
+    Books.to_csv("Data/Cleaned_Books.csv")
 
-if args.write_sql == True:
-    server = 'localhost'
-    database = 'LibrarySystem'
-    driver = 'ODBC Driver 17 for SQL Server'
+    Customers = remove_duplicates(Customers, "Customers")
+    Customers = remove_nulls(Customers, "Customers")
+    Customers.to_csv("Data/Cleaned_Customers.csv")
 
-    connection_string = f"mssql+pyodbc://@{server}/{database}?trusted_connection=yes&driver={driver}"
-    engine = create_engine(connection_string)
 
-    books = pd.read_csv('Data/Cleaned_Books.csv')
+    if args.write_sql == True:
+        server = 'localhost'
+        database = 'LibrarySystem'
+        driver = 'ODBC Driver 17 for SQL Server'
 
-    customers = pd.read_csv('Data/Cleaned_Customers.csv')
+        connection_string = f"mssql+pyodbc://@{server}/{database}?trusted_connection=yes&driver={driver}"
+        engine = create_engine(connection_string)
 
-    books.to_sql(
-        name='Books',
-        if_exists="replace",
-        con=engine 
-    )
+        books = pd.read_csv('Data/Cleaned_Books.csv')
 
-    customers.to_sql(
-        name='Customers',
-        if_exists="replace",
-        con=engine
-    )
+        customers = pd.read_csv('Data/Cleaned_Customers.csv')
 
-    print("Data written to SQL")
-else:
-    print("Argument not met: Not writting to SQL")
+        books.to_sql(
+            name='Books',
+            if_exists="replace",
+            con=engine 
+        )
 
-    
+        customers.to_sql(
+            name='Customers',
+            if_exists="replace",
+            con=engine
+        )
 
+        print("Data written to SQL")
+    else:
+        print("Argument not met: Not writting to SQL")
+
+        
